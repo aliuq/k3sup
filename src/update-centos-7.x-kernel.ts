@@ -8,6 +8,7 @@
 
 import { yellow, red, green } from "https://deno.land/std@0.147.0/fmt/colors.ts";
 import { exec, execr } from "https://deno.land/x/liuq@v0.0.1/exec.ts";
+import { sleep } from "https://deno.land/x/liuq@v0.0.1/utils.ts"
 
 const kernel = await execr("uname -r");
 console.log('\nCurrent kernel version: ' + yellow(kernel as string));
@@ -74,9 +75,4 @@ await exec('reboot')
 
 function log(msg: string) {
   console.log(green(msg));
-}
-function sleep(ms: number) {
-  return new Promise(resolve => {
-    setTimeout(resolve, ms);
-  })
 }
