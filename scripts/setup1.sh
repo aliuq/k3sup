@@ -151,10 +151,19 @@ install_kubectl() {
 
 install_wireguard() {
   echo_title "Install Wireguard"
-  update_yum
-  yum install epel-release https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm -y
-  yum install yum-plugin-elrepo -y
-  yum install kmod-wireguard wireguard-tools -y
+  which wg &> /dev/null
+  if [ $? -eq 0 ]; then
+    yellow "Wireguard is already installed in $(which wg)"
+  else
+    update_yum
+    yum install epel-release https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm -y
+    yum install yum-plugin-elrepo -y
+    yum install kmod-wireguard wireguard-tools -y
+    cyan 'Wait for 5s to reboot'
+    sleep 5
+    green 'Reboot now!'
+    reboot
+  fi
 }
 
 install_k3s() {
@@ -287,7 +296,7 @@ EOF
 }
 
 update_kernel
+install_wireguard
 install_doker
 install_kubectl
-install_wireguard
 install_k3s $1
