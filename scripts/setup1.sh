@@ -167,13 +167,14 @@ install_k3s() {
     green "$(hostname) -> $input_hsotname"
     hostnamectl set-hostname $input_hsotname
   fi
-  if [ $1 == 'agent' ]; then
+  if [[ $1 == 'agent' ]]; then
     echo TODO Agent
   else
     cyan "Install k3s binary"
     # curl -sfL https://get.k3s.io | sh -s - --docker
     curl -fsSL https://rancher-mirror.oss-cn-beijing.aliyuncs.com/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn sh -s - --docker
     cyan 'Link config file'
+    mkdir ~/.kube
     ln -s /etc/rancher/k3s/k3s.yaml ~/.kube/config
     cyan "Set /etc/systemd/system/k3s.service"
     cat > /etc/systemd/system/k3s.service <<EOF
