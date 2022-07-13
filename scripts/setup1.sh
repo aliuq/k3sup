@@ -154,19 +154,19 @@ install_wireguard() {
 
 install_k3s() {
   echo_title "Install K3S"
-  # ipv4=$(curl -fsSL https://api.ipify.org)
-  # echo -e "$(yellow 'Get your ip address is ')$(green $ipv4)$(yellow ', is will be used by k3s')"
-  # yellow "If you want to modify it, enter yout ip in below, or else skip the prompt"
-  # read -p "Enter your ip address: " input_ipv4
-  # if [[ -n $input_ipv4 ]]; then
-  #   ipv4=$input_ipv4
-  # fi
-  # cyan 'Set hostname'
-  # read -p "Are you sure to change hostname($(green $(hostname))), if not, skip it? " input_hsotname
-  # if [[ -n $input_hsotname ]]; then
-  #   green "$(hostname) -> $input_hsotname"
-  #   hostnamectl set-hostname $input_hsotname
-  # fi
+  ipv4=$(curl -fsSL https://api.ipify.org)
+  echo -e "$(yellow 'Get your ip address is ')$(green $ipv4)$(yellow ', is will be used by k3s')"
+  yellow "If you want to modify it, enter yout ip in below, or else skip the prompt"
+  read -p "Enter your ip address: " input_ipv4
+  if [[ -n $input_ipv4 ]]; then
+    ipv4=$input_ipv4
+  fi
+  cyan 'Set hostname'
+  read -p "Are you sure to change hostname($(green $(hostname))), if not, skip it? " input_hsotname
+  if [[ -n $input_hsotname ]]; then
+    green "$(hostname) -> $input_hsotname"
+    hostnamectl set-hostname $input_hsotname
+  fi
   if [[ $1 == '--agent' ]]; then
     cat >&2 <<EOF
 Info: the "agent" mode need two variables to start k3s
@@ -222,8 +222,6 @@ ExecStart=/usr/local/bin/k3s agent \
 EOF
     cyan 'Setup enable'
     systemctl enable k3s-agent --now
-    
-
   else
     cyan "Install k3s binary"
     # curl -sfL https://get.k3s.io | sh -s - --docker
