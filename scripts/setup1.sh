@@ -103,12 +103,17 @@ install_doker() {
     if [[ $reinstall_docker == "y" ]] || [[ $reinstall_docker == "Y" ]]; then
       cyan 'Remove existing docker'
       yum -y remove docker-*
+      cyan 'Install docker (Need a little time)'
+      curl -fsSL https://get.docker.com | sh -s - --mirror Aliyun
+      cyan 'Setup startup'
+      systemctl enable --now docker
     fi
+  else
+    cyan 'Install docker (Need a little time)'
+    curl -fsSL https://get.docker.com | sh -s - --mirror Aliyun
+    cyan 'Setup startup'
+    systemctl enable --now docker
   fi
-  cyan 'Install docker (Need a little time)'
-  curl -fsSL https://get.docker.com | sh -s - --mirror Aliyun
-  cyan 'Setup startup'
-  systemctl enable --now docker
 }
 
 install_kubectl() {
