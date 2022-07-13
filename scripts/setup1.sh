@@ -43,6 +43,29 @@ echo_title() {
   echo
 }
 
+agent=false
+kernel='ml'
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--kernel)
+			kernel="$2"
+			shift
+			;;
+		--agent)
+			agent=true
+			;;
+		--*)
+			echo "Illegal option $1"
+			;;
+	esac
+	shift $(( $# > 0 ? 1 : 0 ))
+done
+
+if [ $kernel != 'ml' ] && [ $kernel != 'lts' ]; then
+  kernel='ml'
+fi
+
 update_kernel() {
   echo_title "Update Kernel"
   kernel_version=$(uname -r)
@@ -76,14 +99,24 @@ update_kernel() {
         echo "Install kernel $(green Stable)"
         yum --disablerepo=\* --enablerepo=elrepo-kernel install kernel-ml -y
       fi
-      cyan 'Setup default'
-      sed -i "s/GRUB_DEFAULT=saved/GRUB_DEFAULT=0/g" /etc/default/grub
       cyan 'Generate grub file'
       grub2-mkconfig -o /boot/grub2/grub.cfg
       cyan 'Remove old kernel tools'
       yum remove -y kernel-tools-libs.x86_64 kernel-tools.x86_64
       cyan 'Install newest kernel tools'
       yum --disablerepo=\* --enablerepo=elrepo-kernel install -y kernel-lt-tools.x86_64
+      cyan 'Setup default'
+      # sed -i "s/GRUB_DEFAULT=saved/GRUB_DEFAULT=0/g" /etc/default/grub
+      echo
+      grep "^menuentry" /boot/grub2/grub.cfg | cut -d "'" -f2
+      echo
+      yellow "Current sorts: $(grub2-editenv list)"
+      echo
+      read -p "select a kernel name from above: " input_kernel_name
+      if [ -z $input_kernel_name ]; then
+        input_kernel_name="$(grub2-editenv list)"
+      fi
+      grub2-set-default "$input_kernel_name"
       cyan 'Wait for 5s to reboot'
       sleep 5
       green 'Reboot now!'
@@ -295,8 +328,8 @@ EOF
   wg show flannel.1
 }
 
-update_kernel
-install_wireguard
-install_doker
-install_kubectl
-install_k3s $1
+# update_kernel
+# install_wireguard
+# install_doker
+# install_kubectl
+# install_k3s $1
