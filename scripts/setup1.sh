@@ -171,7 +171,9 @@ install_k3s() {
     cyan "Install k3s binary"
     # curl -sfL https://get.k3s.io | sh -s - --docker
     curl -fsSL https://rancher-mirror.oss-cn-beijing.aliyuncs.com/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn sh -s - --docker
-    cayn "Set /etc/systemd/system/k3s.service"
+    cyan 'Link config file'
+    ln -s /etc/rancher/k3s/k3s.yaml ~/.kube/config
+    cyan "Set /etc/systemd/system/k3s.service"
     cat > /etc/systemd/system/k3s.service <<EOF
 [Unit]
 Description=Lightweight Kubernetes
