@@ -102,12 +102,12 @@ install_doker() {
       cyan 'Remove existing docker'
       yum -y remove docker-*
     fi
-    cyan 'Install docker (Need a little time)'
-    # curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
-    curl -sSL https://get.daocloud.io/docker | sh
-    cyan 'Setup startup'
-    systemctl enable --now docker
   fi
+  cyan 'Install docker (Need a little time)'
+  # curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
+  curl -sSL https://get.daocloud.io/docker | sh
+  cyan 'Setup startup'
+  systemctl enable --now docker
 }
 
 install_kubectl() {
@@ -131,6 +131,15 @@ install_kubectl() {
         kubectl version --output=yaml
       fi
     fi
+  else
+    cyan 'Install kubectl binary'
+    curl -fsSLO "https://dl.k8s.io/release/$kubectl_latest/bin/linux/amd64/kubectl"
+    cyan 'Validate the binary'
+    curl -fsSLO "https://dl.k8s.io/$kubectl_latest/bin/linux/amd64/kubectl.sha256"
+    echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+    cyan 'Install kubectl'
+    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    kubectl version --output=yaml
   fi
 }
 
