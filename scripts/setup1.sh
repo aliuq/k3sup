@@ -114,9 +114,10 @@ update_kernel() {
       echo
       read -p "select a kernel name from above: " input_kernel_name
       if [ -z $input_kernel_name ]; then
-        input_kernel_name="$(grub2-editenv list)"
+        echo ""
+      else
+        grub2-set-default "$input_kernel_name"
       fi
-      grub2-set-default "$input_kernel_name"
       cyan 'Wait for 5s to reboot'
       sleep 5
       green 'Reboot now!'
