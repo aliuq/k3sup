@@ -113,7 +113,7 @@ update_kernel() {
       yellow "Current sorts: $(grub2-editenv list)"
       echo
       read -p "select a kernel name from above: " input_kernel_name
-      if [ -z $input_kernel_name ]; then
+      if [ -z "$input_kernel_name" ]; then
         echo ""
       else
         grub2-set-default "$input_kernel_name"
