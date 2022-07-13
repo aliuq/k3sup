@@ -1,8 +1,25 @@
 /**
  * Deploy a k3sup cluster
  */
-import { yellow, green, cyan } from "https://deno.land/std@0.147.0/fmt/colors.ts";
-import { exec, execr } from "https://deno.land/x/liuq@v0.0.1/exec.ts"
+import { yellow, green, cyan, bold, red } from "https://deno.land/std@0.147.0/fmt/colors.ts";
+import { exec, execr } from "https://deno.land/x/liuq@v0.0.2-beta.1/exec.ts"
+import { wrapPrompt } from "https://deno.land/x/liuq@v0.0.2-beta.1/utils.ts"
+
+
+interface Options {
+  force?: boolean
+  agent?: boolean
+}
+const options: Options = {}
+
+Deno.args.map(s => {
+  if (['--force', '-y'].includes(s)) {
+    options.force = true
+  }
+  if (['--agent'].includes(s)) {
+    options.agent = true
+  }
+})
 
 const apps: Record<string, { path?: string, version?: string }> = {
   docker: {},
@@ -35,15 +52,14 @@ console.table(apps)
 
 const log = (msg: string) => console.log(green(msg))
 const logTitle = (msg: string) => console.log(cyan(`----------------- ${msg} -----------------`))
+
 const isChina = await checkInChina()
 
 // ----------------- Hostname -----------------
 logTitle('Hostname')
-const hostname = prompt('\nEnter a hostname:')
-if (hostname) {
-  console.log(`Set hostname to ${green(hostname)}`)
-  await exec(`hostnamectl set-hostname ${hostname}`)
-}
+const hostname = await wrapPrompt('\nSet a hostname, it will be used as a node name:')
+console.log(`Set hostname to ${green(hostname)}`)
+await exec(`hostnamectl set-hostname ${hostname}`)
 
 // ----------------- Docker -----------------
 logTitle('Docker')
@@ -90,10 +106,80 @@ if (updateKubectl && updateKubectl.toLowerCase() === 'y') {
   await exec('kubectl version --output=yaml')
 }
 
-// log('Prepare K3S')
-// await exec('curl -fsSL https://rancher-mirror.oss-cn-beijing.aliyuncs.com/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn sh -s - --docker')
- 
+logTitle('Wireguard')
+await exec('yum update -y')
+await exec('yum install epel-release https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm -y')
+await exec('yum install yum-plugin-elrepo -y')
+await exec('yum install kmod-wireguard wireguard-tools -y')
 
+logTitle('K3S')
+let ipv4 = await execr('curl -L https://api.ipify.org')
+if (options.agent) {
+  console.log(yellow(bold(`In agent, needs K3S_URL and K3S_TOKEN variable`)))
+  console.log(yellow('Tips:\n'))
+  console.log(cyan('K3S_URL is your master address, e.g. https://xx.xx.xx.xx:6443'))
+  console.log(cyan('K3S_TOKEN is from your master'))
+  // curl -sfL https://rancher-mirror.oss-cn-beijing.aliyuncs.com/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn K3S_URL="https://xx.xx.xx.xx:6443" K3S_TOKEN="xxxx::server:xxxx" sh -s - --docker
+  if (isChina) {
+    await exec('curl -fsSL https://rancher-mirror.oss-cn-beijing.aliyuncs.com/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn sh -s - --docker')
+  } else {
+    await exec('curl -sfL https://get.k3s.io | sh -s - --docker')
+  }
+} else {
+  const realIP = prompt(`\nGot IP ${green(ipv4 as string)}, if it's wrong, please enter the correct IP:`)
+  if (realIP) {
+    ipv4 = realIP
+  }
+  if (isChina) {
+    await exec('curl -fsSL https://rancher-mirror.oss-cn-beijing.aliyuncs.com/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn sh -s - --docker')
+  } else {
+    await exec('curl -sfL https://get.k3s.io | sh -s - --docker')
+  }
+  log('Write configuation to [/etc/systemd/system/k3s.service]')
+  await Deno.writeTextFile('/etc/systemd/system/k3s.service', `
+[Unit]
+Description=Lightweight Kubernetes
+Documentation=https://k3s.io
+Wants=network-online.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=notify
+EnvironmentFile=/etc/systemd/system/k3s.service.env
+KillMode=process
+Delegate=yes
+# Having non-zero Limit*s causes performance problems due to accounting overhead
+# in the kernel. We recommend using cgroups to do container-local accounting.
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
+ExecStart=/usr/local/bin/k3s \
+  server \
+  --docker \
+  --tls-san ${ipv4} \
+  --node-ip ${ipv4} \
+  --node-external-ip ${ipv4} \
+  --no-deploy servicelb \
+  --flannel-backend wireguard \
+  --kube-proxy-arg "proxy-mode=ipvs" "masquerade-all=true" \
+  --kube-proxy-arg "metrics-bind-address=0.0.0.0"
+  `)
+  await exec('systemctl enable k3s --now')
+  log('Overwrite public IP')
+  await exec(`kubectl annotate nodes ${hostname} flannel.alpha.coreos.com/public-ip-overwrite=${ipv4}`)
+  log('View [wireguard] connection status')
+  await exec('wg show flannel.1')
+}
+
+// ------------------------- Functions -------------------------
 async function checkInChina() {
   try {
     const ipFetch = await fetch('http://ip-api.com/json/')
