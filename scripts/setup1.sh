@@ -317,6 +317,14 @@ EOF
   sleep 2
   cyan 'View [wireguard] connection status'
   wg show flannel.1
+
+  if [ $agent == false ]; then
+    sleep 2
+    cat >&2 <<EOF
+K3S_URL: $(green "https://$ipv4:6443")
+K3S_TOKEN: $(green "$(cat /var/lib/rancher/k3s/server/node-token)")
+EOF
+  fi
 }
 
 update_kernel
