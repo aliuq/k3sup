@@ -84,12 +84,6 @@ update_kernel() {
       yum remove -y kernel-tools-libs.x86_64 kernel-tools.x86_64
       cyan 'Install newest kernel tools'
       yum --disablerepo=\* --enablerepo=elrepo-kernel install -y kernel-lt-tools.x86_64
-      cyan "Start a new kernel by default"
-      echo
-      grep "^menuentry" /boot/grub2/grub.cfg | cut -d "'" -f2
-      echo
-      read -p "select a kernel name to set default: " input_kernel_name
-      grub2-set-default "$input_kernel_name"
       cyan 'Wait for 5s to reboot'
       sleep 5
       green 'Reboot now!'
