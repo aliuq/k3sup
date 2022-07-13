@@ -68,10 +68,10 @@ update_kernel() {
       yum --disablerepo=\* --enablerepo=elrepo-kernel repolist
       read -p "Select a install type, 1) LTS, 2) Stable? (1/2) " install_type
       if [[ $install_type -eq 1 ]] || [[ -z $install_type ]]; then
-        echo "Install kernel ${green LTS}"
+        echo "Install kernel $(green LTS)"
         yum --disablerepo=\* --enablerepo=elrepo-kernel install kernel-lt -y
       else
-        echo "Install kernel ${green Stable}"
+        echo "Install kernel $(green Stable)"
         yum --disablerepo=\* --enablerepo=elrepo-kernel install kernel-ml -y
       fi
       cyan 'Setup default'
