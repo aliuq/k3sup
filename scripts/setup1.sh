@@ -214,6 +214,8 @@ EOF
   fi
 }
 
-# update_kernel
-
-# install_k3s
+update_kernel
+install_doker
+install_kubectl
+install_wireguard
+install_k3s
