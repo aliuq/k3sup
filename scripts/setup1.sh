@@ -66,6 +66,8 @@ update_kernel() {
       fi
       cyan 'Load elrepo-kernel metadata'
       yum --disablerepo=\* --enablerepo=elrepo-kernel repolist
+      cyan 'List avaliable'
+      yum --disablerepo="*" --enablerepo="elrepo-kernel" list available
       read -p "Select a install type, 1) LTS, 2) Stable? (1/2) " install_type
       if [[ $install_type -eq 1 ]] || [[ -z $install_type ]]; then
         echo "Install kernel $(green LTS)"
