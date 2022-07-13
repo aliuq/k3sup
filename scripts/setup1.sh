@@ -214,7 +214,7 @@ install_k3s() {
     green "$(hostname) -> $input_hsotname"
     hostnamectl set-hostname $input_hsotname
   fi
-  if [[ $1 == '--agent' ]]; then
+  if $agent; then
     cat >&2 <<EOF
 Info: the "agent" mode need two variables to start k3s
 
@@ -328,8 +328,8 @@ EOF
   wg show flannel.1
 }
 
-# update_kernel
-# install_wireguard
-# install_doker
-# install_kubectl
-# install_k3s $1
+update_kernel
+install_wireguard
+install_doker
+install_kubectl
+install_k3s
