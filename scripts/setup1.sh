@@ -88,8 +88,8 @@ update_kernel() {
       echo
       grep "^menuentry" /boot/grub2/grub.cfg | cut -d "'" -f2
       echo
-      read -p "Copy kernel name" input_kernel_name
-      grub2-set-default $input_kernel_name
+      read -p "select a kernel name to set default: " input_kernel_name
+      grub2-set-default "$input_kernel_name"
       cyan 'Wait for 5s to reboot'
       sleep 5
       green 'Reboot now!'
