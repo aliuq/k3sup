@@ -154,21 +154,76 @@ install_wireguard() {
 
 install_k3s() {
   echo_title "Install K3S"
-  ipv4=$(curl -fsSL https://api.ipify.org)
-  echo -e "$(yellow 'Get your ip address is ')$(green $ipv4)$(yellow ', is will be used by k3s')"
-  yellow "If you want to modify it, enter yout ip in below, or else skip the prompt"
-  read -p "Enter your ip address: " input_ipv4
-  if [[ -n $input_ipv4 ]]; then
-    ipv4=$input_ipv4
+  # ipv4=$(curl -fsSL https://api.ipify.org)
+  # echo -e "$(yellow 'Get your ip address is ')$(green $ipv4)$(yellow ', is will be used by k3s')"
+  # yellow "If you want to modify it, enter yout ip in below, or else skip the prompt"
+  # read -p "Enter your ip address: " input_ipv4
+  # if [[ -n $input_ipv4 ]]; then
+  #   ipv4=$input_ipv4
+  # fi
+  # cyan 'Set hostname'
+  # read -p "Are you sure to change hostname($(green $(hostname))), if not, skip it? " input_hsotname
+  # if [[ -n $input_hsotname ]]; then
+  #   green "$(hostname) -> $input_hsotname"
+  #   hostnamectl set-hostname $input_hsotname
+  # fi
+  if [[ $1 == '--agent' ]]; then
+    cat >&2 <<EOF
+Info: the "agent" mode need two variables to start k3s
+
+$(cyan K3S_URL): 
+  The k3s master api server url, general format is: $(cyan 'https://<master_ip>:6443'), where <master_ip> is the public IP of the control node.
+
+$(cyan K3S_TOKEN): 
+  The token required to join the cluster, run $(cyan 'cat /var/lib/rancher/k3s/server/node-token') in your control node
+
+EOF
+
+  read -p "Input K3S_URL: " k3s_url
+  if [ -z $k3s_url ]; then
+    exit 0
   fi
-  cyan 'Set hostname'
-  read -p "Are you sure to change hostname($(green $(hostname))), if not, skip it? " input_hsotname
-  if [[ -n $input_hsotname ]]; then
-    green "$(hostname) -> $input_hsotname"
-    hostnamectl set-hostname $input_hsotname
+  read -p "Input K3S_TOKEN: " k3s_token
+  if [ -z $k3s_token ]; then
+    exit 0
   fi
-  if [[ $1 == 'agent' ]]; then
-    echo TODO Agent
+  cyan "Install k3s binary"
+  curl -fsSL https://rancher-mirror.oss-cn-beijing.aliyuncs.com/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn K3S_URL="$k3s_url" K3S_TOKEN="$k3s_token" sh -s - --docker
+  cyan "Set /etc/systemd/system/k3s-agent.service"
+  cat > /etc/systemd/system/k3s-agent.service <<EOF
+[Unit]
+Description=Lightweight Kubernetes
+Documentation=https://k3s.io
+Wants=network-online.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=exec
+EnvironmentFile=/etc/systemd/system/k3s-agent.service.env
+KillMode=process
+Delegate=yes
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
+ExecStart=/usr/local/bin/k3s agent \
+	--docker \
+    --node-external-ip $ipv4 \
+    --node-ip $ipv4 \
+    --kube-proxy-arg "proxy-mode=ipvs" "masquerade-all=true" \
+    --kube-proxy-arg "metrics-bind-address=0.0.0.0"
+EOF
+    cyan 'Setup enable'
+    systemctl enable k3s-agent --now
+    
+
   else
     cyan "Install k3s binary"
     # curl -sfL https://get.k3s.io | sh -s - --docker
@@ -218,17 +273,18 @@ EOF
     sleep 2
     cyan 'Check k3s health'
     kubectl get cs
-    sleep 5
-    cyan 'Overwrite public ip'
-    kubectl annotate nodes "$(hostname)" flannel.alpha.coreos.com/public-ip-overwrite="$ipv4"
-    sleep 2
-    cyan 'View [wireguard] connection status'
-    wg show flannel.1
   fi
+
+  sleep 5
+  cyan 'Overwrite public ip'
+  kubectl annotate nodes "$(hostname)" flannel.alpha.coreos.com/public-ip-overwrite="$ipv4"
+  sleep 2
+  cyan 'View [wireguard] connection status'
+  wg show flannel.1
 }
 
 update_kernel
 install_doker
 install_kubectl
 install_wireguard
-install_k3s
+install_k3s $1
