@@ -91,8 +91,7 @@ update_kernel() {
       yum --disablerepo=\* --enablerepo=elrepo-kernel repolist
       cyan 'List avaliable'
       yum --disablerepo="*" --enablerepo="elrepo-kernel" list available
-      read -p "Select a install type, 1) LTS, 2) Stable? (1/2) " install_type
-      if [[ $install_type -eq 1 ]] || [[ -z $install_type ]]; then
+      if $kernel == 'lts'; then
         echo "Install kernel $(green LTS)"
         yum --disablerepo=\* --enablerepo=elrepo-kernel install kernel-lt -y
       else
@@ -185,19 +184,10 @@ install_kubectl() {
 
 install_wireguard() {
   echo_title "Install Wireguard"
-  which wg &> /dev/null
-  if [ $? -eq 0 ]; then
-    yellow "Wireguard is already installed in $(which wg)"
-  else
-    update_yum
-    yum install epel-release https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm -y
-    yum install yum-plugin-elrepo -y
-    yum install kmod-wireguard wireguard-tools -y
-    cyan 'Wait for 5s to reboot'
-    sleep 5
-    green 'Reboot now!'
-    reboot
-  fi
+  update_yum
+  yum install epel-release https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm -y
+  yum install yum-plugin-elrepo -y
+  yum install kmod-wireguard wireguard-tools -y
 }
 
 install_k3s() {
@@ -334,3 +324,5 @@ install_wireguard
 install_doker
 install_kubectl
 install_k3s
+sleep 5
+reboot
