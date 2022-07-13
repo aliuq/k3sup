@@ -104,8 +104,7 @@ install_doker() {
     fi
   fi
   cyan 'Install docker (Need a little time)'
-  # curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
-  curl -sSL https://get.daocloud.io/docker | sh
+  curl -fsSL https://get.docker.com | sh -s - --mirror Aliyun
   cyan 'Setup startup'
   systemctl enable --now docker
 }
