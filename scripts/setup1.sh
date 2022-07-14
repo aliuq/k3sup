@@ -123,7 +123,7 @@ is_dry_run() {
 
 run() {
   if ! is_dry_run; then
-    echo "+ $sh_c $1"
+    echo "+ $sh_c '$1'"
   fi
   $sh_c "$1"
 }
