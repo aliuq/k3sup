@@ -235,6 +235,7 @@ get_public_ip() {
       return
     fi
     ip=$(curl -fsSL https://api.ipify.org)
+    cyan "Your public ip is: $(green $ip)"
   fi
 }
 
@@ -269,11 +270,11 @@ install_k3s() {
 		RestartSec=5s
 		ExecStartPre=-/sbin/modprobe br_netfilter
 		ExecStartPre=-/sbin/modprobe overlay
-		ExecStart=/usr/local/bin/k3s agent \
-				--docker \
-				--node-external-ip $ip \
-				--node-ip $ip \
-				--kube-proxy-arg \"proxy-mode=ipvs\" \"masquerade-all=true\" \
+		ExecStart=/usr/local/bin/k3s agent \\
+				--docker \\
+				--node-external-ip $ip \\
+				--node-ip $ip \\
+				--kube-proxy-arg \"proxy-mode=ipvs\" \"masquerade-all=true\" \\
 				--kube-proxy-arg \"metrics-bind-address=0.0.0.0\"
 		EOF"
     cyan "Setup enable"
@@ -312,15 +313,14 @@ install_k3s() {
 		RestartSec=5s
 		ExecStartPre=-/sbin/modprobe br_netfilter
 		ExecStartPre=-/sbin/modprobe overlay
-		ExecStart=/usr/local/bin/k3s \
-				server \
-				--docker \
-				--tls-san $ip \
-				--node-ip $ip \
-				--node-external-ip $ip \
-				--no-deploy servicelb \
-				--flannel-backend wireguard \
-				--kube-proxy-arg "proxy-mode=ipvs" "masquerade-all=true" \
+		ExecStart=/usr/local/bin/k3s server \\
+				--docker \\
+				--tls-san $ip \\
+				--node-ip $ip \\
+				--node-external-ip $ip \\
+				--no-deploy servicelb \\
+				--flannel-backend wireguard \\
+				--kube-proxy-arg "proxy-mode=ipvs" "masquerade-all=true" \\
 				--kube-proxy-arg "metrics-bind-address=0.0.0.0"
 		EOF
     cyan "Setup enable"
@@ -330,7 +330,7 @@ install_k3s() {
   fi
   run "sleep 5"
   cyan "Overwrite public ip"
-  run "kubectl annotate nodes $(hostname) flannel.alpha.coreos.com/public-ip-overwrite=$ip"
+  run "kubectl annotate nodes \$(hostname) flannel.alpha.coreos.com/public-ip-overwrite=$ip"
   cyan "View [wireguard] connection status"
   run "wg show flannel.1"
 }
@@ -349,13 +349,14 @@ echo_info() {
     cat <<-EOF
 		INFO
 
-		K3S_URL:   `green master_url`
-		K3S_TOKEN: `green master_token`
-
+		K3S_URL:   $(printf ${green}$master_url${plain})
+		K3S_TOKEN: $(printf ${green}$master_token${plain})
 
 		Used by cluster agent:
 
-		${bold}sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup1.sh) --agent --k3s_url $master_url --k3s_token $master_token --hostname ${red}<New Node Name>${plain} ${plain}
+		$(printf "${bold}sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup1.sh) --agent --k3s_url $master_url --k3s_token $master_token --hostname ${red}<New Node Name>${plain} ${plain}")
+    
+    change the node name to your own
 		EOF
   fi
 
