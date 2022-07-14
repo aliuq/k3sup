@@ -404,10 +404,12 @@ do_preinstall() {
     return
   fi
   if [ $kernel != "ml" ] && [ $kernel != "lt" ]; then
+    cyan "Set kernel to ml"
     kernel="ml"
   fi
 
   if [ $input_hostname ]; then
+    cyan "Set hostname to $input_hostname"
     hostnamectl set-hostname $hostname
   else
     input_hostname=$(hostname)
