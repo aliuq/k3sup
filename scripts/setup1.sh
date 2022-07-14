@@ -1,15 +1,6 @@
 #! /bin/bash
 
 clear
-echo
-echo "###################################################################"
-echo "#                                                                 #"
-echo "# Centos 7.x fast install K3S                                     #"
-echo "# Author: AliuQ                                                   #"
-echo "#                                                                 #"
-echo "###################################################################"
-echo
-
 # Colors
 red='\033[0;31m'
 green='\033[0;32m'
@@ -17,320 +8,429 @@ yellow='\033[0;33m'
 cyan='\033[0;36m'
 plain='\033[0m'
 
-version_lt() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" != "$1"; }
-
-yellow() {
-  echo -e "${yellow}$1${plain}"
-}
-green() {
-  echo -e "${green}$1${plain}"
-}
-red() {
-  echo -e "${red}$1${plain}"
-}
-cyan() {
-  echo -e "${cyan}$1${plain}"
-}
-
-update_yum() {
-  cyan "Update yum repo"
-  yum update -y
-}
-
-echo_title() {
-  echo
-  green "======================= 🧡 $1 ======================="
-  echo
-}
-
+KERNEL_LIMIT_VERSION="5.4.205"
+DRY_RUN=${DRY_RUN:-}
+ip=''
 agent=false
+verbose=false
 kernel='ml'
+input_hostname=''
+help=false
+k3s_url=''
+k3s_token=''
 
 while [ $# -gt 0 ]; do
-	case "$1" in
-		--kernel)
-			kernel="$2"
-			shift
-			;;
-		--agent)
-			agent=true
-			;;
-		--*)
-			echo "Illegal option $1"
-			;;
-	esac
-	shift $(( $# > 0 ? 1 : 0 ))
+  case "$1" in
+  --kernel)
+    kernel="$2"
+    shift
+    ;;
+  --ip)
+    ip="$2"
+    shift
+    ;;
+  --hostname)
+    input_hostname="$2"
+    shift
+    ;;
+  --k3s_url)
+    k3s_url="$2"
+    shift
+    ;;
+  --k3s_token)
+    k3s_token="$2"
+    shift
+    ;;
+  --agent)
+    agent=true
+    ;;
+  --verbose)
+    verbose=true
+    ;;
+  --dry-run)
+    DRY_RUN=1
+    ;;
+  --help)
+    help=true
+    ;;
+  --*)
+    echo "Illegal option $1"
+    ;;
+  esac
+  shift $(($# > 0 ? 1 : 0))
 done
 
-if [ $kernel != 'ml' ] && [ $kernel != 'lts' ]; then
+if [ $kernel != 'ml' ] && [ $kernel != 'lt' ]; then
   kernel='ml'
 fi
 
+if [ $input_hostname ]; then
+  hostnamectl set-hostname $hostname
+else
+  input_hostname=$(hostname)
+fi
+
+info() {
+  if $verbose; then
+    echo "$1"
+  fi
+}
+yellow() {
+  if $verbose; then
+    echo "${yellow}$1${plain}"
+  fi
+}
+green() {
+  if $verbose; then
+    echo "${green}$1${plain}"
+  fi
+}
+red() {
+  if $verbose; then
+    echo "${red}$1${plain}"
+  fi
+}
+cyan() {
+  if $verbose; then
+    echo "${cyan}$1${plain}"
+  fi
+}
+
+echo_title() {
+  if $verbose; then
+    green "\n======================= 🧡 $1 =======================\n"
+  fi
+}
+
+command_exists() {
+  command -v "$@" >/dev/null 2>&1
+}
+
+# version_lt checks if the version is less than the argument
+#
+# examples:
+#
+# version_lt 5.0.4 5.0.5 // true (success)
+# version_lt 5.0.4 5.1.5 // true (success)
+# version_lt 5.0.5 5.0.5 // false (fail)
+# version_lt 5.1.4 5.0.5 // false (fail)
+version_lt() {
+  test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" != "$1";
+}
+
+is_dry_run() {
+  if [ -z "$DRY_RUN" ]; then
+    return 1
+  else
+    return 0
+  fi
+}
+
+run() {
+  if ! is_dry_run; then
+    echo "+ $sh_c $1"
+  fi
+  $sh_c "$1"
+}
+
+# Centos 7.x kernel default version is 3.x, so we need to update it to 5.x
+# if the kernel version is greater than $KERNEL_LIMIT_VERSION, will skip this step
 update_kernel() {
   echo_title "Update Kernel"
-  kernel_version=$(uname -r)
-  kernel_ver=$(echo $kernel_version | grep -P '^[\d.]+' -o)
-  echo "Current kernel version: $(yellow $kernel_version)"
-  if version_lt $kernel_ver "5.4.205"; then
-    echo
-    yellow "The current version less than $(yellow 5.4.205), need to upgrade kernel version, wait 5s, will be auto start upgrade!"
-    echo
-    read -p "Confirm? (y/n) " update_confirm
-    if [[ $update_confirm == "y" ]] || [[ $update_confirm == "Y" ]]; then
-      cyan 'Load the public key of the ELRepo'
-      rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
-      yum --disablerepo="*" --enablerepo="elrepo-kernel" list available &> /dev/null
-      if [ $? -eq 0 ]; then
-        cyan 'Preparing udpate ELRepo'
-        rpm -Uvh https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm
-      else
-        cyan 'Preparing install ELRepo'
-        yum install -y https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm
-      fi
-      cyan 'Load elrepo-kernel metadata'
-      yum --disablerepo=\* --enablerepo=elrepo-kernel repolist
-      cyan 'List avaliable'
-      yum --disablerepo="*" --enablerepo="elrepo-kernel" list available
-      if $kernel == 'lts'; then
-        echo "Install kernel $(green LTS)"
-        yum --disablerepo=\* --enablerepo=elrepo-kernel install kernel-lt -y
-      else
-        echo "Install kernel $(green Stable)"
-        yum --disablerepo=\* --enablerepo=elrepo-kernel install kernel-ml -y
-      fi
-      cyan 'Generate grub file'
-      grub2-mkconfig -o /boot/grub2/grub.cfg
-      cyan 'Remove old kernel tools'
-      yum remove -y kernel-tools-libs.x86_64 kernel-tools.x86_64
-      cyan 'Install newest kernel tools'
-      yum --disablerepo=\* --enablerepo=elrepo-kernel install -y kernel-lt-tools.x86_64
-      cyan 'Setup default'
-      # sed -i "s/GRUB_DEFAULT=saved/GRUB_DEFAULT=0/g" /etc/default/grub
-      echo
-      grep "^menuentry" /boot/grub2/grub.cfg | cut -d "'" -f2
-      echo
-      yellow "Current sorts: $(grub2-editenv list)"
-      echo
-      read -p "select a kernel name from above: " input_kernel_name
-      if [ -z "$input_kernel_name" ]; then
-        echo ""
-      else
-        grub2-set-default "$input_kernel_name"
-      fi
-      cyan 'Wait for 5s to reboot'
-      sleep 5
-      green 'Reboot now!'
-      reboot
-    fi
+  kernel_ver=$(uname -r | grep -oP '^[\d.]+')
+
+  if version_lt $kernel_ver $KERNEL_LIMIT_VERSION; then
+    info "The current version less than $(yellow 5.4.205), need to upgrade kernel version, wait for 5s, will be auto started upgrade!\n"
+    cyan 'Load the public key of the ELRepo'
+    run 'rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org'
+    cyan 'Preparing udpate ELRepo'
+    run 'rpm -Uvh https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm'
+    cyan 'Load elrepo-kernel metadata'
+    run 'yum --disablerepo=\* --enablerepo=elrepo-kernel repolist'
+    cyan 'List avaliable'
+    run 'yum --disablerepo="*" --enablerepo="elrepo-kernel" list available'
+    cyan "Install $(green kernel-$kernel)"
+    run "yum --disablerepo=\* --enablerepo=elrepo-kernel install kernel-$kernel -y"
+    cyan 'Generate grub file'
+    run 'grub2-mkconfig -o /boot/grub2/grub.cfg'
+    cyan 'Remove old kernel tools'
+    run 'yum remove -y kernel-tools-libs.x86_64 kernel-tools.x86_64'
+    cyan 'Install newest kernel tools'
+    run "yum --disablerepo=\* --enablerepo=elrepo-kernel install -y kernel-$kernel-tools.x86_64"
+    cyan 'Setup default'
+    run "sed -i \"s/GRUB_DEFAULT=saved/GRUB_DEFAULT=0/g\" /etc/default/grub"
+    cyan 'Wait for 5s to reboot'
+    run 'sleep 5'
+    green 'Reboot now!'
+    run 'reboot'
+  else
+    info "The current version($(yellow $kernel_ver)) greater than $(yellow $KERNEL_LIMIT_VERSION), no need to upgrade kernel version!\n"
   fi
 }
 
+# Install docker
+#
+# see more: https://get.docker.com
+#
 install_doker() {
   echo_title "Install Docker"
-  which docker &> /dev/null
-  if [ $? -eq 0 ]; then
-    docker --version
-    echo
-    echo
-    read -p "$(yellow 'docker installed, remove and reinstall? (y/n)') " reinstall_docker
-    if [[ $reinstall_docker == "y" ]] || [[ $reinstall_docker == "Y" ]]; then
-      cyan 'Remove existing docker'
-      yum -y remove docker-*
-      cyan 'Install docker (Need a little time)'
-      curl -fsSL https://get.docker.com | sh -s - --mirror Aliyun
-      cyan 'Setup startup'
-      systemctl enable --now docker
+  if command_exists docker; then
+    run 'docker --version'
+    if is_dry_run; then
+      return
     fi
+    echo "\n\033[0;33mTo reinstall docker, please run the below command firstly:\033[0m"
+    echo
+    echo "    yum -y remove docker-*"
+    echo
   else
     cyan 'Install docker (Need a little time)'
-    curl -fsSL https://get.docker.com | sh -s - --mirror Aliyun
+    run 'curl -fsSL https://get.docker.com | sh -s - --mirror Aliyun'
     cyan 'Setup startup'
-    systemctl enable --now docker
+    run 'systemctl enable --now docker'
   fi
 }
 
+# Install kubectl
 install_kubectl() {
   echo_title "Install Kubectl"
   kubectl_latest=$(curl -fsSL https://dl.k8s.io/release/stable.txt)
-  which kubectl &> /dev/null
-  if [ $? -eq 0 ]; then
+  if command_exists kubectl; then
+    if is_dry_run; then
+      return
+    fi
     kubectl_version=$(kubectl version --client --output=yaml)
     kubectl_ver=$(echo $kubectl_version | grep -oP "gitVersion: v[\d.]+\+" | grep -oP "[\d.]+")
     if version_lt $kubectl_ver $kubectl_latest; then
-      yellow "kubectl version is less than latest"
-      read -p "are you sure to upgrade from $(green $kubectl_ver) to $(green $kubectl_latest)? (y/n) " upgrade_kubectl
-      if [[ $upgrade_kubectl == "y" ]] || [[ $upgrade_kubectl == "Y" ]]; then
-        cyan 'Install kubectl binary'
-        curl -fsSLO "https://dl.k8s.io/release/$kubectl_latest/bin/linux/amd64/kubectl"
-        cyan 'Validate the binary'
-        curl -fsSLO "https://dl.k8s.io/$kubectl_latest/bin/linux/amd64/kubectl.sha256"
-        echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
-        cyan 'Install kubectl'
-        sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-        kubectl version --output=yaml
-      fi
+      echo "kubectl version$(yellow $kubectl_ver) is less than offical latest$(yellow $kubectl_latest)"
+      echo
+      echo "    curl -LO https://dl.k8s.io/release/$kubectl_latest/bin/linux/amd64/kubectl"
+      echo "    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl"
+      echo "    kubectl version --client --output=yaml"
+      echo
+    else
+      echo "kubectl version$(yellow $kubectl_ver) is greater than offical latest$(yellow $kubectl_latest), no need to update!"
     fi
   else
     cyan 'Install kubectl binary'
-    curl -fsSLO "https://dl.k8s.io/release/$kubectl_latest/bin/linux/amd64/kubectl"
+    run "curl -fsSLO https://dl.k8s.io/release/$kubectl_latest/bin/linux/amd64/kubectl"
     cyan 'Validate the binary'
-    curl -fsSLO "https://dl.k8s.io/$kubectl_latest/bin/linux/amd64/kubectl.sha256"
-    echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+    run "curl -fsSLO https://dl.k8s.io/$kubectl_latest/bin/linux/amd64/kubectl.sha256"
+    run "echo \"\$(cat kubectl.sha256) kubectl\" | sha256sum --check"
     cyan 'Install kubectl'
-    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-    kubectl version --output=yaml
+    run "sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl"
+    run "kubectl version --output=yaml"
   fi
 }
 
+# Install wireguard
 install_wireguard() {
-  echo_title "Install Wireguard"
-  update_yum
-  yum install epel-release https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm -y
-  yum install yum-plugin-elrepo -y
-  yum install kmod-wireguard wireguard-tools -y
+  echo_title 'Install Wireguard'
+  run 'yum update -y'
+  run 'yum install epel-release https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm -y'
+  run 'yum install yum-plugin-elrepo -y'
+  run 'yum install kmod-wireguard wireguard-tools -y'
+}
+
+get_public_ip() {
+  if [ -z "$ip" ]; then
+    if is_dry_run; then
+      return
+    fi
+    ip=$(curl -fsSL https://api.ipify.org)
+  fi
 }
 
 install_k3s() {
   echo_title "Install K3S"
-  ipv4=$(curl -fsSL https://api.ipify.org)
-  echo -e "$(yellow 'Get your ip address is ')$(green $ipv4)$(yellow ', is will be used by k3s')"
-  yellow "If you want to modify it, enter yout ip in below, or else skip the prompt"
-  read -p "Enter your ip address: " input_ipv4
-  if [[ -n $input_ipv4 ]]; then
-    ipv4=$input_ipv4
-  fi
-  cyan 'Set hostname'
-  read -p "Are you sure to change hostname($(green $(hostname))), if not, skip it? " input_hsotname
-  if [[ -n $input_hsotname ]]; then
-    green "$(hostname) -> $input_hsotname"
-    hostnamectl set-hostname $input_hsotname
-  fi
+  get_public_ip
   if $agent; then
-    cat >&2 <<EOF
-Info: the "agent" mode need two variables to start k3s
+    cyan "Install k3s binary"
+    run "curl -fsSL https://rancher-mirror.oss-cn-beijing.aliyuncs.com/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn K3S_URL=$k3s_url K3S_TOKEN=$k3s_token sh -s - --docker"
+    cyan "Write /etc/systemd/system/k3s-agent.service"
+    run "cat >/etc/systemd/system/k3s-agent.service <<-EOF
+		[Unit]
+		Description=Lightweight Kubernetes
+		Documentation=https://k3s.io
+		Wants=network-online.target
 
-$(cyan K3S_URL): 
-  The k3s master api server url, general format is: $(cyan 'https://<master_ip>:6443'), where <master_ip> is the public IP of the control node.
+		[Install]
+		WantedBy=multi-user.target
 
-$(cyan K3S_TOKEN): 
-  The token required to join the cluster, run $(cyan 'cat /var/lib/rancher/k3s/server/node-token') in your control node
-
-EOF
-
-  read -p "Input K3S_URL: " k3s_url
-  if [ -z $k3s_url ]; then
-    exit 0
-  fi
-  read -p "Input K3S_TOKEN: " k3s_token
-  if [ -z $k3s_token ]; then
-    exit 0
-  fi
-  cyan "Install k3s binary"
-  curl -fsSL https://rancher-mirror.oss-cn-beijing.aliyuncs.com/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn K3S_URL="$k3s_url" K3S_TOKEN="$k3s_token" sh -s - --docker
-  cyan "Set /etc/systemd/system/k3s-agent.service"
-  cat > /etc/systemd/system/k3s-agent.service <<EOF
-[Unit]
-Description=Lightweight Kubernetes
-Documentation=https://k3s.io
-Wants=network-online.target
-
-[Install]
-WantedBy=multi-user.target
-
-[Service]
-Type=exec
-EnvironmentFile=/etc/systemd/system/k3s-agent.service.env
-KillMode=process
-Delegate=yes
-LimitNOFILE=infinity
-LimitNPROC=infinity
-LimitCORE=infinity
-TasksMax=infinity
-TimeoutStartSec=0
-Restart=always
-RestartSec=5s
-ExecStartPre=-/sbin/modprobe br_netfilter
-ExecStartPre=-/sbin/modprobe overlay
-ExecStart=/usr/local/bin/k3s agent \
-	--docker \
-    --node-external-ip $ipv4 \
-    --node-ip $ipv4 \
-    --kube-proxy-arg "proxy-mode=ipvs" "masquerade-all=true" \
-    --kube-proxy-arg "metrics-bind-address=0.0.0.0"
-EOF
+		[Service]
+		Type=exec
+		EnvironmentFile=/etc/systemd/system/k3s-agent.service.env
+		KillMode=process
+		Delegate=yes
+		LimitNOFILE=infinity
+		LimitNPROC=infinity
+		LimitCORE=infinity
+		TasksMax=infinity
+		TimeoutStartSec=0
+		Restart=always
+		RestartSec=5s
+		ExecStartPre=-/sbin/modprobe br_netfilter
+		ExecStartPre=-/sbin/modprobe overlay
+		ExecStart=/usr/local/bin/k3s agent \
+				--docker \
+				--node-external-ip $ip \
+				--node-ip $ip \
+				--kube-proxy-arg \"proxy-mode=ipvs\" \"masquerade-all=true\" \
+				--kube-proxy-arg \"metrics-bind-address=0.0.0.0\"
+		EOF"
     cyan 'Setup enable'
-    systemctl enable k3s-agent --now
+    run 'systemctl enable k3s-agent --now'
   else
     cyan "Install k3s binary"
     # curl -sfL https://get.k3s.io | sh -s - --docker
-    curl -fsSL https://rancher-mirror.oss-cn-beijing.aliyuncs.com/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn sh -s - --docker
-    cyan 'Link config file'
-    mkdir ~/.kube
-    ln -s /etc/rancher/k3s/k3s.yaml ~/.kube/config
-    cyan "Set /etc/systemd/system/k3s.service"
-    cat > /etc/systemd/system/k3s.service <<EOF
-[Unit]
-Description=Lightweight Kubernetes
-Documentation=https://k3s.io
-Wants=network-online.target
+    run "curl -fsSL https://rancher-mirror.oss-cn-beijing.aliyuncs.com/k3s/k3s-install.sh | INSTALL_K3S_MIRROR=cn sh -s - --docker"
+    cyan "Link config file"
+    run "mkdir ~/.kube -p"
+    run "cat /etc/rancher/k3s/k3s.yaml >> ~/.kube/config"
+    run "chmod 600 ~/.kube/config"
+    cyan "Write /etc/systemd/system/k3s.service"
+    cat > /etc/systemd/system/k3s.service <<-EOF
+		[Unit]
+		Description=Lightweight Kubernetes
+		Documentation=https://k3s.io
+		Wants=network-online.target
 
-[Install]
-WantedBy=multi-user.target
+		[Install]
+		WantedBy=multi-user.target
 
-[Service]
-Type=notify
-EnvironmentFile=/etc/systemd/system/k3s.service.env
-KillMode=process
-Delegate=yes
-# Having non-zero Limit*s causes performance problems due to accounting overhead
-# in the kernel. We recommend using cgroups to do container-local accounting.
-LimitNOFILE=1048576
-LimitNPROC=infinity
-LimitCORE=infinity
-TasksMax=infinity
-TimeoutStartSec=0
-Restart=always
-RestartSec=5s
-ExecStartPre=-/sbin/modprobe br_netfilter
-ExecStartPre=-/sbin/modprobe overlay
-ExecStart=/usr/local/bin/k3s \
-  server \
-  --docker \
-  --tls-san $ipv4 \
-  --node-ip $ipv4 \
-  --node-external-ip $ipv4 \
-  --no-deploy servicelb \
-  --flannel-backend wireguard \
-  --kube-proxy-arg "proxy-mode=ipvs" "masquerade-all=true" \
-  --kube-proxy-arg "metrics-bind-address=0.0.0.0"
-EOF
-    cyan 'Setup enable'
-    systemctl enable k3s --now
-    sleep 2
-    cyan 'Check k3s health'
-    kubectl get cs
+		[Service]
+		Type=notify
+		EnvironmentFile=/etc/systemd/system/k3s.service.env
+		KillMode=process
+		Delegate=yes
+		# Having non-zero Limit*s causes performance problems due to accounting overhead
+		# in the kernel. We recommend using cgroups to do container-local accounting.
+		LimitNOFILE=1048576
+		LimitNPROC=infinity
+		LimitCORE=infinity
+		TasksMax=infinity
+		TimeoutStartSec=0
+		Restart=always
+		RestartSec=5s
+		ExecStartPre=-/sbin/modprobe br_netfilter
+		ExecStartPre=-/sbin/modprobe overlay
+		ExecStart=/usr/local/bin/k3s \
+				server \
+				--docker \
+				--tls-san $ip \
+				--node-ip $ip \
+				--node-external-ip $ip \
+				--no-deploy servicelb \
+				--flannel-backend wireguard \
+				--kube-proxy-arg "proxy-mode=ipvs" "masquerade-all=true" \
+				--kube-proxy-arg "metrics-bind-address=0.0.0.0"
+		EOF
+    cyan "Setup enable"
+    run "systemctl enable k3s --now"
+    cyan "Check k3s health"
+    run "kubectl get cs"
   fi
-
-  sleep 5
-  cyan 'Overwrite public ip'
-  kubectl annotate nodes "$(hostname)" flannel.alpha.coreos.com/public-ip-overwrite="$ipv4"
-  sleep 2
-  cyan 'View [wireguard] connection status'
-  wg show flannel.1
-
-  if [ $agent == false ]; then
-    sleep 2
-    cat >&2 <<EOF
-K3S_URL: $(green "https://$ipv4:6443")
-K3S_TOKEN: $(green "$(cat /var/lib/rancher/k3s/server/node-token)")
-EOF
-  fi
+  run "sleep 5"
+  cyan "Overwrite public ip"
+  run "kubectl annotate nodes $(hostname) flannel.alpha.coreos.com/public-ip-overwrite=$ip"
+  cyan "View [wireguard] connection status"
+  run "wg show flannel.1"
 }
 
-update_kernel
-install_wireguard
-install_doker
-install_kubectl
-install_k3s
-sleep 5
-reboot
+echo_info() {
+  echo
+  echo
+
+  if ! $agent; then
+    cat <<-EOF
+		INFO
+
+		K3S_URL:   $(green "https://$ip:6443")
+		K3S_TOKEN: $(green $(cat /var/lib/rancher/k3s/server/node-token))
+		EOF
+  fi
+
+  echo "\n${yellow}After reboot, run $(green 'wg show flannel.1') to check the connection status${plain}"
+  echo
+}
+
+echo_help() {
+  echo
+  echo "Description:"
+  echo
+  echo "  The script is about how to easily deploy k3s in cross public cloud on Centos 7.x"
+  echo "  it contains upgrade kernel, install docker、wireguard、kubectl、k3s"
+  echo "  when run this script in cluster master node, it will print k3s_url and k3s_token"
+  echo "  which must be required to join the cluster"
+  echo
+  echo "Usage:"
+  echo
+  echo "  \033[1msh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup1.sh)\033[0m"
+  echo
+  echo "Options:"
+  echo
+  echo "  --kernel:    Kernel type, options are: \033[1mml\033[0m, \033[1mlt\033[0m; default is \033[1mml\033[0m"
+  echo "               lt is stands for long term, ml is based on mainline branch"
+  echo "  --agent:     Install k3s agent, default is \033[1mfalse\033[0m"
+  echo "               if the value is \033[1mtrue\033[0m, the script will install k3s agent, k3s_url and k3s_token are required"
+  echo "               if the value is \033[1mfalse\033[0m, the script will install k3s server"
+  echo "  --ip:        Public ipv4 address, default is \033[1m$ip\033[0m, it is from \033[1mcurl -fsSL https://api.ipify.org\033[0m"
+  echo "               if provided ip address, the script will overwrite the ipv4 address"
+  echo "  --hostname:  Hostname, default is \033[1m$hostname\033[0m, it will be used as cluster node name"
+  echo "               no duplicate names with nodes in the cluster"
+  echo "  --k3s_url:   The k3s master api server url, general format is: \033[1mhttps://<master_ip>:6443\033[0m"
+  echo "               where <master_ip> is the public IP of the cluster control node. only used in k3s agent"
+  echo "  --k3s_token: The token required to join the cluster, only used in k3s agent"
+  echo "               run \033[1mcat /var/lib/rancher/k3s/server/node-token\033[0m in your control node"
+  echo "  --dry-run:   Print command only, will not install anything, default is \033[1mfalse\033[0m,"
+  echo "  --verbose:   Output more information, default is \033[1mfalse\033[0m"
+  echo "  --help:      Show this help message and exit"
+  echo
+}
+
+do_install() {
+  # echo_help
+
+  user="$(id -un 2>/dev/null || true)"
+  sh_c='sh -c'
+  if [ "$user" != 'root' ]; then
+    if command_exists sudo; then
+      sh_c='sudo -E sh -c'
+    elif command_exists su; then
+      sh_c='su -c'
+    else
+      cat >&2 <<-'EOF'
+			Error: this installer needs the ability to run commands as root.
+			We are unable to find either "sudo" or "su" available to make this happen.
+			EOF
+      exit 1
+    fi
+  fi
+
+  if is_dry_run; then
+    sh_c="echo"
+  fi
+
+  if $agent; then
+    if is_dry_run; then
+      return
+    fi
+    if [ -z $k3s_url ] || [ -z $k3s_token ]; then
+      echo "${red}--k3s_url and --k3s_token is required when --agent is specified${plain}"
+      echo_help
+      exit 1
+    fi
+  fi
+
+  update_kernel
+  install_doker
+  install_wireguard
+  install_kubectl
+  install_k3s
+  sleep 2
+  echo_info
+  sleep 3
+  reboot
+}
+
+do_install
