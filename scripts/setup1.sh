@@ -67,7 +67,7 @@ done
 
 info() {
   if $verbose; then
-    echo "$1"
+    printf "$1\n"
   fi
 }
 yellow() {
