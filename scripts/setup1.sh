@@ -330,7 +330,7 @@ install_k3s() {
   fi
   run "sleep 5"
   cyan "Overwrite public ip"
-  run "kubectl annotate nodes \$(hostname) flannel.alpha.coreos.com/public-ip-overwrite=$ip"
+  run "kubectl annotate nodes $(hostname) flannel.alpha.coreos.com/public-ip-overwrite=$ip"
   cyan "View [wireguard] connection status"
   run "wg show flannel.1"
 }
@@ -356,11 +356,11 @@ echo_info() {
 
 		$(printf "${bold}sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup1.sh) --agent --k3s_url $master_url --k3s_token $master_token --hostname ${red}<New Node Name>${plain} ${plain}")
     
-    change the node name to your own
+		Change the node name to your own and copy it in your node ssh terminal, then run it.
 		EOF
   fi
 
-  printf "\n${yellow}After reboot, run $(green \"wg show flannel.1\") to check the connection status${plain}\n"
+  printf "\n${yellow}After reboot, run ${green}wg show flannel.1${plain} to check the connection status${plain}\n"
   echo
 }
 
