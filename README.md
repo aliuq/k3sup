@@ -1,13 +1,24 @@
 # k3sup
 
-[WIP]快速安装跨云厂商K3S集群
+[WIP] 快速安装跨云厂商K3S集群
 
-## Install deno
-
-[官方安装地址](https://deno.land/manual/getting_started/installation)
-
-安装脚本主要是用在 Centos 7.x 版本上，因为 Centos 7.x 版本的系统 libc 的版本为[2.17](https://deno.js.cn/t/topic/611)，而 deno 需要2.18版本以上，下面脚本主要是安装 2.18 版本的 libc，这个过程需要持续很长时间，另一个是采用了[加速 deno 安装的镜像源](https://github.com/denocn/deno_install)。
+## 安装
 
 ```bash
-source <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/install_deno.sh)
+# master
+sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup.sh) --hostname master --verbose
+
+# 等待 master 安装完成后，复制控制台打印的命令，进入 node 节点，进行安装
+sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup1.sh) --verbose --agent --k3s_url $master_url --k3s_token $master_token --hostname <New Node Name>
+
+# node 节点安装后，需要进入 master 节点，添加下面注解
+kubectl annotate nodes <node> flannel.alpha.coreos.com/public-ip-overwrite=<node_pub_ip>
 ```
+
+## 参考链接
+
++ [跨云厂商部署 k3s 集群](https://icloudnative.io/posts/deploy-k3s-cross-public-cloud)
+
+## License
+
+[MIT](./LICENSE)
