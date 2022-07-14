@@ -412,7 +412,7 @@ do_preinstall() {
 
   if [ $input_hostname ]; then
     cyan "Set hostname to $input_hostname"
-    hostnamectl set-hostname "$hostname"
+    run "hostnamectl set-hostname $hostname"
   else
     input_hostname=$(hostname)
   fi
