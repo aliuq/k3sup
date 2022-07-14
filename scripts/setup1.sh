@@ -354,7 +354,7 @@ echo_info() {
 
 		Used by cluster agent:
 
-		$(printf "${bold}sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup1.sh) --agent --k3s_url $master_url --k3s_token $master_token --hostname ${red}<New Node Name>${plain} ${plain}")
+		$(printf "${bold}sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup1.sh) --verbose --agent --k3s_url $master_url --k3s_token $master_token --hostname ${red}<New Node Name>${plain} ${plain}")
     
 		Change the node name to your own and copy it in your node ssh terminal, then run it.
 		EOF
