@@ -360,7 +360,8 @@ echo_info() {
 		EOF
   fi
 
-  printf "\n${yellow}After reboot, run ${green}wg show flannel.1${plain} to check the connection status${plain}\n"
+  printf "\n${yellow}After reboot, run ${green}wg show flannel.1${plain}${yellow} to check the connection status${plain}\n"
+  echo
   echo
 }
 
@@ -411,7 +412,7 @@ do_preinstall() {
 
   if [ $input_hostname ]; then
     cyan "Set hostname to $input_hostname"
-    hostnamectl set-hostname $hostname
+    hostnamectl set-hostname "$hostname"
   else
     input_hostname=$(hostname)
   fi
