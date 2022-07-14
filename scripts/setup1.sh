@@ -72,22 +72,22 @@ info() {
 }
 yellow() {
   if $verbose; then
-    echo "${yellow}$1${plain}"
+    printf "${yellow}$1${plain}\n"
   fi
 }
 green() {
   if $verbose; then
-    echo "${green}$1${plain}"
+    printf "${green}$1${plain}\n"
   fi
 }
 red() {
   if $verbose; then
-    echo "${red}$1${plain}"
+    printf "${red}$1${plain}\n"
   fi
 }
 cyan() {
   if $verbose; then
-    echo "${cyan}$1${plain}"
+    printf "${cyan}$1${plain}\n"
   fi
 }
 
@@ -174,7 +174,7 @@ install_doker() {
     if is_dry_run; then
       return
     fi
-    echo "\n${yellow}To reinstall docker, please run the below command firstly:${plain}"
+    printf "\n${yellow}To reinstall docker, please run the below command firstly:${plain}\n"
     echo
     echo "    yum -y remove docker-*"
     echo
@@ -359,7 +359,7 @@ echo_info() {
 		EOF
   fi
 
-  echo "\n${yellow}After reboot, run $(green \"wg show flannel.1\") to check the connection status${plain}"
+  printf "\n${yellow}After reboot, run $(green \"wg show flannel.1\") to check the connection status${plain}\n"
   echo
 }
 
@@ -415,7 +415,7 @@ do_preinstall() {
 
   if $agent; then
     if [ -z $k3s_url ] || [ -z $k3s_token ]; then
-      echo "${red}--k3s_url and --k3s_token is required when --agent is specified${plain}"
+      printf "${red}--k3s_url and --k3s_token is required when --agent is specified${plain}\n"
       echo_help
       exit 1
     fi
