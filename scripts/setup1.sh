@@ -271,11 +271,11 @@ install_k3s() {
 		ExecStartPre=-/sbin/modprobe br_netfilter
 		ExecStartPre=-/sbin/modprobe overlay
 		ExecStart=/usr/local/bin/k3s agent \\
-				--docker \\
-				--node-external-ip $ip \\
-				--node-ip $ip \\
-				--kube-proxy-arg \"proxy-mode=ipvs\" \"masquerade-all=true\" \\
-				--kube-proxy-arg \"metrics-bind-address=0.0.0.0\"
+		  --docker \\
+		  --node-external-ip $ip \\
+		  --node-ip $ip \\
+		  --kube-proxy-arg \"proxy-mode=ipvs\" \"masquerade-all=true\" \\
+		  --kube-proxy-arg \"metrics-bind-address=0.0.0.0\"
 		EOF"
     cyan "Setup enable"
     run "systemctl enable k3s-agent --now"
@@ -314,14 +314,14 @@ install_k3s() {
 		ExecStartPre=-/sbin/modprobe br_netfilter
 		ExecStartPre=-/sbin/modprobe overlay
 		ExecStart=/usr/local/bin/k3s server \\
-				--docker \\
-				--tls-san $ip \\
-				--node-ip $ip \\
-				--node-external-ip $ip \\
-				--no-deploy servicelb \\
-				--flannel-backend wireguard \\
-				--kube-proxy-arg "proxy-mode=ipvs" "masquerade-all=true" \\
-				--kube-proxy-arg "metrics-bind-address=0.0.0.0"
+		  --docker \\
+		  --tls-san $ip \\
+		  --node-ip $ip \\
+		  --node-external-ip $ip \\
+		  --no-deploy servicelb \\
+		  --flannel-backend wireguard \\
+		  --kube-proxy-arg "proxy-mode=ipvs" "masquerade-all=true" \\
+		  --kube-proxy-arg "metrics-bind-address=0.0.0.0"
 		EOF
     cyan "Setup enable"
     run "systemctl enable k3s --now"
