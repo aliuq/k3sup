@@ -341,26 +341,28 @@ echo_info() {
     return
   fi
   echo
+  echo "===================== THEN ====================="
   echo
 
   if ! $agent; then
     master_url="https://$ip:6443"
     master_token=$(cat /var/lib/rancher/k3s/server/node-token)
-    cat <<-EOF
-		INFO
 
-		K3S_URL:   $(printf ${green}$master_url${plain})
-		K3S_TOKEN: $(printf ${green}$master_token${plain})
-
-		Used by cluster agent:
-
-		$(printf "${bold}sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup.sh) --verbose --agent --k3s_url $master_url --k3s_token $master_token --hostname ${red}<New Node Name>${plain} ${plain}")
-    
-		Change the node name to your own and copy it in your node ssh terminal, then run it.
-		EOF
+    echo -e "K3S_URL:   ${green}$master_url${plain}"
+    echo -e "K3S_TOKEN: ${green}$master_token${plain}"
+    echo
+    echo "Run below command to join a node to the cluster:"
+    echo
+    echo -e "${bold}sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup.sh) --verbose --agent --k3s_url $master_url --k3s_token $master_token --hostname ${red}$input_hostname${plain} ${plain}"
+    echo
+  else
+    echo "Run below command in your control server node:"
+    echo
+    echo -e "kubectl annotate nodes $input_hostname flannel.alpha.coreos.com/public-ip-overwrite=$ip"
+    echo
   fi
 
-  printf "\n${yellow}After reboot, run ${green}wg show flannel.1${plain} ${yellow}to check the connection status${plain}\n"
+  echo -e "\n${yellow}After reboot, run ${green}wg show flannel.1${plain} ${yellow}to check the connection status${plain}\n"
   echo
   echo
 }
