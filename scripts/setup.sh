@@ -375,9 +375,13 @@ echo_help() {
   echo "  when run this script in cluster master node, it will print k3s_url and k3s_token"
   echo "  which must be required to join the cluster"
   echo
-  echo "Usage:"
+  printf "  ${yellow}It will be restart few times.${plain}\n"
   echo
-  printf "  ${bold}sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup1.sh)${plain}\n"
+  echo "Usage:"
+  echo "  Server:"
+  printf "    ${bold}sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup.sh) --hostname master --verbose${plain}\n"
+  echo "  Agent:"
+  printf "    ${bold}sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup.sh) --verbose --agent --k3s_url <K3S URL> --k3s_token <K3S TOKEN> --hostname <New Node Name>${plain}\n"
   echo
   echo "Options:"
   echo
@@ -468,10 +472,9 @@ do_install() {
   install_wireguard
   install_kubectl
   install_k3s
-  run "sleep 2"
+  run "sleep 5"
   echo_info
-  run "sleep 3"
-  run "reboot"
+  reboot
 }
 # Start install steps
 do_install
