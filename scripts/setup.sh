@@ -176,7 +176,7 @@ install_doker() {
     fi
     printf "\n${yellow}To reinstall docker, please run the below command firstly:${plain}\n"
     echo
-    echo "    yum -y remove docker-*"
+    echo "> yum -y remove docker-*"
     echo
   else
     cyan "Install docker (Need a little time)"
@@ -200,9 +200,9 @@ install_kubectl() {
       echo "kubectl version($(yellow v$kubectl_ver)) is less than offical latest($(yellow $kubectl_latest))"
       echo "run the below commands to upgrade kubectl:"
       echo
-      echo "    curl -LO https://dl.k8s.io/release/$kubectl_latest/bin/linux/amd64/kubectl"
-      echo "    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl"
-      echo "    kubectl version --client --output=yaml"
+      echo "> curl -LO https://dl.k8s.io/release/$kubectl_latest/bin/linux/amd64/kubectl"
+      echo "> sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl"
+      echo "> kubectl version --client --output=yaml"
       echo
     else
       echo "kubectl version($(yellow v$kubectl_ver)) is greater than offical latest($(yellow $kubectl_latest)), no need to update!"
@@ -288,7 +288,7 @@ install_k3s() {
     run "cat /etc/rancher/k3s/k3s.yaml >> ~/.kube/config"
     run "chmod 600 ~/.kube/config"
     cyan "Write /etc/systemd/system/k3s.service"
-    cat > /etc/systemd/system/k3s.service <<-EOF
+    run "cat > /etc/systemd/system/k3s.service <<-EOF
 		[Unit]
 		Description=Lightweight Kubernetes
 		Documentation=https://k3s.io
@@ -322,7 +322,7 @@ install_k3s() {
 		  --flannel-backend wireguard \\
 		  --kube-proxy-arg "proxy-mode=ipvs" "masquerade-all=true" \\
 		  --kube-proxy-arg "metrics-bind-address=0.0.0.0"
-		EOF
+		EOF"
     cyan "Setup enable"
     run "systemctl enable k3s --now"
     cyan "Check k3s health"
@@ -353,12 +353,14 @@ echo_info() {
     echo
     echo "Run below command to join a node to the cluster:"
     echo
-    echo -e "${bold}sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup.sh) --verbose --agent --k3s_url $master_url --k3s_token $master_token --hostname ${red}$input_hostname${plain} ${plain}"
+    echo -e "> sh <(curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/setup.sh) --verbose --agent --k3s_url $master_url --k3s_token $master_token --hostname ${red}<Node Name>${plain}"
+    echo
+    echo "change <Node Name> to your node name"
     echo
   else
     echo "Run below command in your control server node:"
     echo
-    echo -e "kubectl annotate nodes $input_hostname flannel.alpha.coreos.com/public-ip-overwrite=$ip"
+    echo -e "> kubectl annotate nodes $input_hostname flannel.alpha.coreos.com/public-ip-overwrite=$ip"
     echo
   fi
 
