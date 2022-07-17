@@ -4,6 +4,10 @@ set -e
 # Update kernel version
 #
 
+log() {
+  echo -e "[INFO] [$(date "+%Y-%m-%d %H:%M:%S")] $1"
+}
+
 version_lt() {
   test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" != "$1";
 }
@@ -11,8 +15,8 @@ version_lt() {
 KERNEL_LIMIT_VERSION=5.4.205
 kernel_ver=$(uname -r | grep -oP "^[\d.]+")
 if version_lt $kernel_ver $KERNEL_LIMIT_VERSION; then
-  echo "The current version v$kernel_ver is less than v$KERNEL_LIMIT_VERSION"
-  echo "Start to update kernel"
+  log "The current version v$kernel_ver is less than v$KERNEL_LIMIT_VERSION"
+  log "Start to update kernel"
   rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
   rpm -Uvh https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm
   yum --disablerepo=\* --enablerepo=elrepo-kernel repolist
@@ -24,6 +28,6 @@ if version_lt $kernel_ver $KERNEL_LIMIT_VERSION; then
   yum --disablerepo=\* --enablerepo=elrepo-kernel install -y kernel-ml-tools.x86_64
   reboot
 else
-  echo "The current version v$kernel_ver is greater than v$KERNEL_LIMIT_VERSION"
-  echo "No need to update kernel"
+  log "The current version v$kernel_ver is greater than v$KERNEL_LIMIT_VERSION"
+  log "No need to update kernel"
 fi
