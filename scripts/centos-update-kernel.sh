@@ -1,4 +1,12 @@
 #! /bin/bash
+set -e
+#
+# Update kernel version
+#
+
+version_lt() {
+  test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" != "$1";
+}
 
 KERNEL_LIMIT_VERSION=5.4.205
 kernel_ver=$(uname -r | grep -oP "^[\d.]+")
