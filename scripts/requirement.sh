@@ -105,7 +105,7 @@ install_doker() {
       # $sh_c "curl -fsSL https://get.daocloud.io/docker | sh $suf"
       $sh_c "curl -fsSL https://get.docker.com | sh -s - --mirror Aliyun $suf"
     else
-      $sh_c "curl -fsSL https://get.docker.com $suf"
+      $sh_c "curl -fsSL https://get.docker.com | sh $suf"
     fi
     $sh_c "systemctl enable --now docker $suf"
     $sh_c "docker version $suf"
