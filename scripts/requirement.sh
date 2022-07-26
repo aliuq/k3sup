@@ -19,7 +19,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
   --mirror) mirror=true ;;
   --verbose) verbose=true ;;
-  --kernel) kernel="$3" shift ;;
+  --kernel) kernel="$2" shift ;;
   --*) echo "Illegal option $1" ;;
   esac
   shift $(($# > 0 ? 1 : 0))
