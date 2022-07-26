@@ -150,6 +150,7 @@ install_wireguard() {
 }
 
 do_start() {
+  set_var
   update_kernel
   install_doker
   install_kubectl
