@@ -5,8 +5,12 @@ set -e
 # kernel(minimum version: 5.4.205)、docker、kubectl、wireguard
 #
 # Usage:
-#  curl -fsSL https://github.com/aliuq/k3sup/blob/master/scripts/requirement.sh | sh
+#  curl -fsSL https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/requirement.sh | sh
+# 
+# Mirror of China:
+#  curl -fsSL https://raw.fastgit.org/aliuq/k3sup/master/scripts/requirement.sh | sh -s - --mirror
 #
+clear
 
 verbose=false
 mirror=false
