@@ -12,11 +12,6 @@ set -e
 #
 clear
 
-# Avoid `TERM environment variable not set.` error
-if [ ! $TERM ]; then
-  export TERM=xterm-256color
-fi
-
 verbose=false
 mirror=false
 kernel="ml"
