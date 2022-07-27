@@ -146,7 +146,11 @@ install_k3s_server() {
       log "\033[31mFailed to start k3s service, please rerun this script with --verbose to see details info\033[0m"
       exit 1
     fi
-    waitNodeReady "$master_name"
+    if $use_docker && ! $cri_dockerd; then
+      sleep 10
+    else
+      waitNodeReady "$master_name"
+    fi
     log "Successfully installed k3s"
     $sh_c "mkdir ~/.kube -p && ln /etc/rancher/k3s/k3s.yaml ~/.kube/config && chmod 600 ~/.kube/config $suf"
     log "Successfully added k3s to the PATH"
