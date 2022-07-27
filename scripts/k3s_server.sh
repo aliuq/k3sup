@@ -2,7 +2,6 @@
 set -e
 
 # Install k3s server
-clear
 
 verbose=false
 mirror=false

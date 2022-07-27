@@ -10,7 +10,6 @@ set -e
 # Mirror of China:
 #  curl -fsSL https://raw.fastgit.org/aliuq/k3sup/master/scripts/requirement.sh | sh -s - --mirror
 #
-clear
 
 verbose=false
 mirror=false

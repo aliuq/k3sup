@@ -4,7 +4,6 @@ set -e
 # Install k3s agent
 # This script is mainly executed after ssh remote login, and is not recommended to be used alone.
 #
-clear
 
 verbose=false
 mirror=false
