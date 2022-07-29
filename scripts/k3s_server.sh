@@ -145,10 +145,10 @@ install_k3s_server() {
       log "\033[31mFailed to start k3s service, please rerun this script with --verbose to see details info\033[0m"
       exit 1
     fi
-    if $use_docker && ! $cri_dockerd; then
-      sleep 10
-    else
+    if $use_docker && $cri_dockerd; then
       waitNodeReady $master_name
+    else
+      sleep 10
     fi
     log "Successfully installed k3s"
     $sh_c "mkdir ~/.kube -p && ln /etc/rancher/k3s/k3s.yaml ~/.kube/config && chmod 600 ~/.kube/config $suf"
@@ -166,7 +166,9 @@ install_k3s_server() {
     fi
     $sh_c "k3s kubectl apply -f $kilo_manifests_url/crds.yaml $suf"
     $sh_c "k3s kubectl apply -f $kilo_manifests_url/kilo-k3s.yaml $suf"
-    if $use_docker && ! $cri_dockerd; then
+    if $use_docker && $cri_dockerd; then
+      sleep 1
+    else
       waitNodeReady $master_name
     fi
     log "Successfully applied kilo manifests"
