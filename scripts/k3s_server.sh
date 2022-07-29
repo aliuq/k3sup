@@ -166,11 +166,7 @@ install_k3s_server() {
     fi
     $sh_c "k3s kubectl apply -f $kilo_manifests_url/crds.yaml $suf"
     $sh_c "k3s kubectl apply -f $kilo_manifests_url/kilo-k3s.yaml $suf"
-    if $use_docker && $cri_dockerd; then
-      sleep 1
-    else
-      waitNodeReady $master_name
-    fi
+    sleep 1
     log "Successfully applied kilo manifests"
   fi
 }
