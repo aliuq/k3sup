@@ -81,8 +81,8 @@ install_cri_dockerd() {
   else
     lt_version=$(curl --connect-timeout 5 -m 5 -fsSL https://api.github.com/repos/Mirantis/cri-dockerd/releases/latest | grep -oP 'tag_name": "v\K[\d.]+' || echo "0.2.3")
     if $mirror; then
-      releases_url="https://hub.fastgit.xyz/Mirantis/cri-dockerd/releases"
-      raw_url="https://raw.fastgit.org"
+      releases_url="https://hub.llll.host/Mirantis/cri-dockerd/releases"
+      raw_url="https://raw.llll.host"
     else
       releases_url="https://github.com/Mirantis/cri-dockerd/releases"
       raw_url="https://raw.githubusercontent.com"

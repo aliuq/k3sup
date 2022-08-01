@@ -47,9 +47,9 @@ while [ $# -gt 1 ]; do
 done
 
 if $mirror; then
-  REQUIREMENT_URL="https://raw.fastgit.org/aliuq/k3sup/master/scripts/requirement.sh"
-  K3S_SERVER_URL="https://raw.fastgit.org/aliuq/k3sup/master/scripts/k3s_server.sh"
-  K3S_AGENT_URL="https://raw.fastgit.org/aliuq/k3sup/master/scripts/k3s_agent.sh"
+  REQUIREMENT_URL="https://raw.llll.host/aliuq/k3sup/master/scripts/requirement.sh"
+  K3S_SERVER_URL="https://raw.llll.host/aliuq/k3sup/master/scripts/k3s_server.sh"
+  K3S_AGENT_URL="https://raw.llll.host/aliuq/k3sup/master/scripts/k3s_agent.sh"
 else
   REQUIREMENT_URL="https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/requirement.sh"
   K3S_SERVER_URL="https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/k3s_server.sh"
