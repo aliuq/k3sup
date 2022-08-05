@@ -156,7 +156,7 @@ install_k3s_server() {
     $sh_c "k3s kubectl annotate node $master_name kilo.squat.ai/persistent-keepalive=20 $suf"
     log "Successfully added kilo annotates"
     if $mirror; then
-      kilo_manifests_url="https://gitee.com/mirrors/squat/raw/main/manifests"
+      kilo_manifests_url="https://raw.llll.host/squat/kilo/main/manifests"
     else
       kilo_manifests_url="https://raw.githubusercontent.com/squat/kilo/main/manifests"
     fi
