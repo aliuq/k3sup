@@ -162,8 +162,9 @@ install_k3s_server() {
     fi
     $sh_c "k3s kubectl apply -f $kilo_manifests_url/crds.yaml $suf"
     $sh_c "k3s kubectl apply -f $kilo_manifests_url/kilo-k3s.yaml $suf"
-    waitNodeReady $master_name
     log "Successfully applied kilo manifests"
+    log "Waiting for k3s to be ready"
+    waitNodeReady $master_name
   fi
 }
 
