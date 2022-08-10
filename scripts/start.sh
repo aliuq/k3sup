@@ -168,9 +168,9 @@ do_join() {
 
   log "Start copying public key $secrect.pub to $ip"
   option="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
-  $sh_c "sshpass -p $password ssh-copy-id -i $secrect.pub $option $user@$ip $suf"
+  $sh_c "sshpass -p "\'$password\'" ssh-copy-id -i $secrect.pub $option $user@$ip $suf"
   sed_str="sed -i 's/^#\?PubkeyAuthentication \(yes\|no\)$/PubkeyAuthentication yes/g' /etc/ssh/sshd_config"
-  $sh_c "sshpass -p $password ssh $option $user@$ip \"$sed_str && systemctl restart sshd\" $suf"
+  $sh_c "sshpass -p "\'$password\'" ssh $option $user@$ip \"$sed_str && systemctl restart sshd\" $suf"
   sshr="ssh -i $secrect -o ConnectTimeout=60 $option $user@$ip export TERM=xterm-256color;"
 
   k3s_url="https://$server_ip:6443"
