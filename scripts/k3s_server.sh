@@ -129,7 +129,7 @@ install_k3s_server() {
       master_name="$node_name"
       k3s_run_str="$k3s_run_str K3S_NODE_NAME=$master_name"
     fi
-    k3s_run_str="$k3s_run_str INSTALL_K3S_EXEC=\""
+    k3s_run_str="$k3s_run_str K3S_CLUSTER_INIT=true INSTALL_K3S_EXEC=\""
     if $use_docker; then
       if $cri_dockerd; then
         install_cri_dockerd
