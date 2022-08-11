@@ -241,9 +241,9 @@ do_join() {
   if [ $kilo_location ]; then k_loc=$kilo_location; fi
   if $as_server; then
     log "\033[33mIf an error occurs, execute the following command\033[0m"
-    log "  k3s kubectl annotate node $node_name kilo.squat.ai/location=$k_loc"
-    log "  k3s kubectl annotate node $node_name kilo.squat.ai/force-endpoint=$ip:51820"
-    log "  k3s kubectl annotate node $node_name kilo.squat.ai/persistent-keepalive=20"
+    log "\$ k3s kubectl annotate node $node_name kilo.squat.ai/location=$k_loc"
+    log "\$ k3s kubectl annotate node $node_name kilo.squat.ai/force-endpoint=$ip:51820"
+    log "\$ k3s kubectl annotate node $node_name kilo.squat.ai/persistent-keepalive=20"
   fi
 
   $sh_c "k3s kubectl annotate node $node_name kilo.squat.ai/location=$k_loc $suf"
