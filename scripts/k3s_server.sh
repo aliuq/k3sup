@@ -3,6 +3,8 @@ set -e
 
 # Install k3s server
 
+GET_IP_URL=${GET_IP_URL:-"ip.llll.host"}
+
 verbose=false
 mirror=false
 use_docker=true
@@ -29,9 +31,9 @@ while [ $# -gt 0 ]; do
 done
 
 if [ ! $ip ]; then
-  ip=$(curl -fsSL ip.llll.host)
+  ip=$(curl -fsSL $GET_IP_URL)
   if [ $? != 0 ]; then
-    echo "Failed to get ip from ip.llll.host, please input ip manually!"
+    echo "Failed to get ip from $GET_IP_URL, please input ip manually!"
     exit 1
   fi
 fi
