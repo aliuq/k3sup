@@ -6,9 +6,8 @@ set -e
 
 clear
 
-REQUIREMENT_URL=""
-K3S_SERVER_URL=""
-K3S_AGENT_URL=""
+GET_IP_URL=${GET_IP_URL:-"ip.llll.host"}
+
 ip=""
 mirror=false
 node_name=""
@@ -16,19 +15,22 @@ user="root"
 password=""
 server_ip=""
 ssh_key=""
-k3s_version=""
+k3s_version="v1.23.9+k3s1"
 verbose=false
 force=false
 kernel="ml"
 kilo_location=""
 use_docker=true
-cri_dockerd=true
+cri_dockerd=false
+as_server=false
+dry_run=false
 
 command_name=$1
 while [ $# -gt 1 ]; do
   case "$2" in
   --mirror) mirror=true ;;
   --verbose) verbose=true ;;
+  --dry-run) dry_run=true ;;
   --kernel) kernel="$3" shift ;;
   --ip) ip="$3" shift ;;
   --server-ip) server_ip="$3" shift ;;
@@ -38,8 +40,9 @@ while [ $# -gt 1 ]; do
   --k3s-version) k3s_version="$3" shift ;;
   --node-name) node_name="$3" shift ;;
   --kilo-location) kilo_location="$3" shift ;;
-  --disable-cri-dockerd) cri_dockerd=false ;;
+  --cri-dockerd) cri_dockerd=true ;;
   --disable-docker) use_docker=false ;;
+  --server) as_server=true ;;
   -y) force=true ;;
   --*) echo "Illegal option $2" ;;
   esac
@@ -47,13 +50,11 @@ while [ $# -gt 1 ]; do
 done
 
 if $mirror; then
-  REQUIREMENT_URL="https://raw.llll.host/aliuq/k3sup/master/scripts/requirement.sh"
-  K3S_SERVER_URL="https://raw.llll.host/aliuq/k3sup/master/scripts/k3s_server.sh"
-  K3S_AGENT_URL="https://raw.llll.host/aliuq/k3sup/master/scripts/k3s_agent.sh"
+  HUB_URL=${HUB_URL:-"https://hub.llll.host"}
+  RAW_URL=${RAW_URL:-"https://raw.llll.host"}
 else
-  REQUIREMENT_URL="https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/requirement.sh"
-  K3S_SERVER_URL="https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/k3s_server.sh"
-  K3S_AGENT_URL="https://raw.githubusercontent.com/aliuq/k3sup/master/scripts/k3s_agent.sh"
+  HUB_URL="https://github.com"
+  RAW_URL="https://raw.githubusercontent.com"
 fi
 
 log() {
@@ -114,18 +115,19 @@ do_install() {
     requirement_param="$requirement_param --verbose"
     k3s_param="$k3s_param --verbose"
   fi
-  curl -fsSL $REQUIREMENT_URL | sh -s - $requirement_param
+  curl -fsSL "$RAW_URL/aliuq/k3sup/master/scripts/requirement.sh" | sh -s - $requirement_param
   if [ $? != 0 ]; then
     log "\033[31mFailed to install requirements\033[0m"
     exit 1
   fi
   if ! $use_docker; then k3s_param="$k3s_param --disable-docker"; fi
-  if ! $cri_dockerd; then k3s_param="$k3s_param --disable-cri-dockerd"; fi
+  if $cri_dockerd; then k3s_param="$k3s_param --cri-dockerd"; fi
+  if $dry_run; then k3s_param="$k3s_param --dry-run"; fi
   if [ $kilo_location ]; then k3s_param="$k3s_param --kilo-location $kilo_location"; fi
   if [ $k3s_version ]; then k3s_param="$k3s_param --k3s-version $k3s_version"; fi
   if [ $node_name ]; then k3s_param="$k3s_param --node-name $node_name"; fi
   if [ $ip ]; then k3s_param="$k3s_param --ip $ip"; fi
-  curl -fsSL $K3S_SERVER_URL | sh -s - $k3s_param
+  curl -fsSL "$RAW_URL/aliuq/k3sup/master/scripts/k3s_server.sh" | sh -s - $k3s_param
   if [ $? != 0 ]; then
     log "\033[31mFailed to start k3s service\033[0m"
     exit 1
@@ -134,6 +136,19 @@ do_install() {
 }
 
 do_join() {
+  if [ ! $ip ]; then
+    log "\033[31mIP address is required\033[0m"
+    exit 1
+  fi
+  if [ ! $node_name ]; then
+    log "\033[31mNode name is required\033[0m"
+    exit 1
+  fi
+  if [ ! $password ]; then
+    log "\033[31mPassword is required\033[0m"
+    exit 1
+  fi
+
   set_var
   if [ $kernel != "ml" ] && [ $kernel != "lt" ]; then kernel="ml"; fi
 
@@ -145,6 +160,14 @@ do_join() {
     log "Start installing sshpass"
     $sh_c "yum install sshpass -y $suf"
     log "Successfully installed sshpass"
+  fi
+
+  if [ ! $server_ip ]; then
+    server_ip=$(curl -fsSL $GET_IP_URL)
+    if [ $? != 0 ]; then
+      echo "Failed to get server ip from $GET_IP_URL, please input server ip manually!"
+      exit 1
+    fi
   fi
 
   echo_title "Connectcion to $ip"
@@ -191,29 +214,38 @@ do_join() {
     k3s_param="$k3s_param --verbose"
   fi
 
-  $sshr "curl -fsSL $REQUIREMENT_URL | sh -s - $requirement_param"
+  $sshr "curl -fsSL $RAW_URL/aliuq/k3sup/master/scripts/requirement.sh | sh -s - $requirement_param"
   if [ $? != 0 ]; then
     log "\033[31mFailed to install requirements\033[0m"
     exit 1
   fi
   if ! $use_docker; then k3s_param="$k3s_param --disable-docker"; fi
-  if ! $cri_dockerd; then k3s_param="$k3s_param --disable-cri-dockerd"; fi
+  if $cri_dockerd; then k3s_param="$k3s_param --cri-dockerd"; fi
+  if $dry_run; then k3s_param="$k3s_param --dry-run"; fi
+  if $as_server; then k3s_param="$k3s_param --server"; fi
   if [ $k3s_version ]; then k3s_param="$k3s_param --k3s-version $k3s_version"; fi
   if [ $node_name ]; then k3s_param="$k3s_param --node-name $node_name"; fi
   if [ $ip ]; then k3s_param="$k3s_param --ip $ip"; fi
-  $sshr "curl -fsSL $K3S_AGENT_URL | sh -s - $k3s_param"
+  $sshr "curl -fsSL $RAW_URL/aliuq/k3sup/master/scripts/k3s_agent.sh | sh -s - $k3s_param"
   if [ $? != 0 ]; then
     log "\033[31mConnection to $ip closed\033[0m"
     exit 1
   fi
 
-  if $use_docker && ! $cri_dockerd; then
+  if $use_docker && ! $cri_dockerd && ! $as_server; then
     sleep 10
   else
     waitNodeReady $node_name
   fi
   k_loc=$node_name
   if [ $kilo_location ]; then k_loc=$kilo_location; fi
+  if $as_server; then
+    log "\033[33mIf an error occurs, execute the following command\033[0m"
+    log "  k3s kubectl annotate node $node_name kilo.squat.ai/location=$k_loc"
+    log "  k3s kubectl annotate node $node_name kilo.squat.ai/force-endpoint=$ip:51820"
+    log "  k3s kubectl annotate node $node_name kilo.squat.ai/persistent-keepalive=20"
+  fi
+
   $sh_c "k3s kubectl annotate node $node_name kilo.squat.ai/location=$k_loc $suf"
   $sh_c "k3s kubectl annotate node $node_name kilo.squat.ai/force-endpoint=$ip:51820 $suf"
   $sh_c "k3s kubectl annotate node $node_name kilo.squat.ai/persistent-keepalive=20 $suf"

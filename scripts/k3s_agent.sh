@@ -8,8 +8,10 @@ set -e
 verbose=false
 mirror=false
 use_docker=true
-cri_dockerd=true
-k3s_version=""
+cri_dockerd=false
+dry_run=false
+as_server=false
+k3s_version="v1.23.9+k3s1"
 node_name=""
 ip=""
 k3s_url=""
@@ -19,8 +21,10 @@ while [ $# -gt 0 ]; do
   --mirror) mirror=true ;;
   --verbose) verbose=true ;;
   --disable-docker) use_docker=false ;;
-  --disable-cri-dockerd) cri_dockerd=false ;;
+  --cri-dockerd) cri_dockerd=true ;;
+  --dry-run) dry_run=true ;;
   --ip) ip="$2" shift ;;
+  --server) as_server=true ;;
   --k3s-version) k3s_version="$2" shift ;;
   --node-name) node_name="$2" shift ;;
   --k3s-url) k3s_url="$2" shift ;;
@@ -29,6 +33,14 @@ while [ $# -gt 0 ]; do
   esac
   shift $(($# > 0 ? 1 : 0))
 done
+
+if $mirror; then
+  HUB_URL=${HUB_URL:-"https://hub.llll.host"}
+  RAW_URL=${RAW_URL:-"https://raw.llll.host"}
+else
+  HUB_URL="https://github.com"
+  RAW_URL="https://raw.githubusercontent.com"
+fi
 
 log() {
   echo -e "\033[36m[INFO] $(date "+%Y-%m-%d %H:%M:%S")\033[0m $@"
@@ -84,23 +96,16 @@ install_cri_dockerd() {
     log "cri-dockerd already installed with version v$cri_version"
   else
     lt_version=$(curl --connect-timeout 5 -m 5 -fsSL https://api.github.com/repos/Mirantis/cri-dockerd/releases/latest | grep -oP 'tag_name": "v\K[\d.]+' || echo "0.2.3")
-    if $mirror; then
-      releases_url="https://hub.llll.host/Mirantis/cri-dockerd/releases"
-      raw_url="https://raw.llll.host"
-    else
-      releases_url="https://github.com/Mirantis/cri-dockerd/releases"
-      raw_url="https://raw.githubusercontent.com"
-    fi
     log "Start installing cri-dockerd"
-    $sh_c "wget $releases_url/download/v$lt_version/cri-dockerd-$lt_version.amd64.tgz -O cri-dockerd.tgz $suf"
+    $sh_c "wget $HUB_URL/Mirantis/cri-dockerd/releases/download/v$lt_version/cri-dockerd-$lt_version.amd64.tgz -O cri-dockerd.tgz $suf"
     $sh_c "tar -xvf cri-dockerd.tgz $suf"
     $sh_c "cp ./cri-dockerd/cri-dockerd /usr/local/bin/"
     if [ $? != 0 ]; then
       log "\033[0;31mFailed to install cri-dockerd\033[0m"
       exit 1
     fi
-    $sh_c "wget $raw_url/Mirantis/cri-dockerd/master/packaging/systemd/cri-docker.service $suf"
-    $sh_c "wget $raw_url/Mirantis/cri-dockerd/master/packaging/systemd/cri-docker.socket $suf"
+    $sh_c "wget $RAW_URL/Mirantis/cri-dockerd/master/packaging/systemd/cri-docker.service $suf"
+    $sh_c "wget $RAW_URL/Mirantis/cri-dockerd/master/packaging/systemd/cri-docker.socket $suf"
     $sh_c "cp -a cri-docker.* /etc/systemd/system/"
     $sh_c "sed -i -e 's,/usr/bin/cri-dockerd,/usr/local/bin/cri-dockerd,' /etc/systemd/system/cri-docker.service"
     $sh_c "systemctl daemon-reload"
@@ -125,26 +130,46 @@ install_k3s_agent() {
     else
       k3s_run_str="$k3s_run_str https://get.k3s.io |"
     fi
-    if [ $k3s_version ]; then
-      k3s_run_str="$k3s_run_str INSTALL_K3S_VERSION=$k3s_version"
+    k3s_run_str="$k3s_run_str INSTALL_K3S_VERSION=$k3s_version K3S_URL=$k3s_url K3S_TOKEN=$k3s_token sh -s -"
+    if $as_server; then
+      k3s_run_str="$k3s_run_str server --cluster-init"
+    else
+      k3s_run_str="$k3s_run_str agent"
     fi
     agent_name="$(hostname)"
     if [ $node_name ]; then
       agent_name="$node_name"
-      k3s_run_str="$k3s_run_str K3S_NODE_NAME=$agent_name"
     fi
-    k3s_run_str="$k3s_run_str K3S_URL=$k3s_url K3S_TOKEN=$k3s_token INSTALL_K3S_EXEC=\""
+    k3s_run_str="$k3s_run_str --node-name $agent_name"
     if $use_docker; then
       if $cri_dockerd; then
-        install_cri_dockerd
+        if ! $dry_run; then
+          install_cri_dockerd
+        fi
         k3s_run_str="$k3s_run_str --container-runtime-endpoint unix:///var/run/cri-dockerd.sock"
       else
         k3s_run_str="$k3s_run_str --docker"
       fi
     fi
-    k3s_run_str="$k3s_run_str --node-external-ip $ip --kube-proxy-arg metrics-bind-address=0.0.0.0\""
-    $sh_c "$k3s_run_str sh $suf"
-    log "Successfully installed k3s, wait for node ready"
+    if $as_server; then
+      k3s_run_str="$k3s_run_str --tls-san $ip --flannel-backend none"
+    fi
+    k3s_run_str="$k3s_run_str --node-external-ip $ip --kube-proxy-arg metrics-bind-address=0.0.0.0"
+    if $dry_run; then
+      log "k3s run command: \033[33m$k3s_run_str\033[0m"
+      exit 2
+    else
+      $sh_c "$k3s_run_str $suf"
+      if [ $? != 0 ]; then
+        log "\033[31mFailed to start k3s agent service, please rerun this script with --verbose to see details info\033[0m"
+        exit 1
+      fi
+    fi
+    log "Successfully installed k3s"
+    if $as_server; then
+      $sh_c "mkdir ~/.kube -p && ln /etc/rancher/k3s/k3s.yaml ~/.kube/config && chmod 600 ~/.kube/config $suf"
+      log "Successfully added k3s to the PATH"
+    fi
   fi
 }
 
